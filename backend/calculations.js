@@ -3,8 +3,8 @@
  * Calcule les totaux nutritionnels à partir d'un tableau de repas.
  * Chaque repas doit contenir les propriétés: calories, proteins, carbs, fats.
  *
- * @param {Array} meals - Liste des repas.
- * @returns {Object} Totaux nutritionnels.
+ * @param {Array} meals -
+ * @returns {Object} 
  */
 const calculateDailyTotals = (meals) =>
     meals.reduce((totals, meal) => ({

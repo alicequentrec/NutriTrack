@@ -1,6 +1,3 @@
-// -----------------------------------------------------
-// GESTION DES SECTIONS (NAVIGATION)
-// -----------------------------------------------------
 function showSection(sectionId) {
   // Cache toutes les sections
   document.querySelectorAll('section').forEach(section => section.classList.remove('active'));
@@ -15,9 +12,9 @@ function showSection(sectionId) {
   if (sectionId === 'stats') updateStatistics();
 }
 
-// -----------------------------------------------------
+
 // OBJECTIFS (CALORIES, PROTÉINES, ETC.)
-// -----------------------------------------------------
+
 function getObjectives() {
   // Retourne un objet par défaut si rien n'est stocké
   const stored = localStorage.getItem('objectives');
@@ -36,22 +33,45 @@ function setObjectives(objectives) {
   localStorage.setItem('objectives', JSON.stringify(objectives));
 }
 
-// -----------------------------------------------------
+
 // RECUPÉRATION ET STOCKAGE DES REPAS
-// -----------------------------------------------------
-function getMeals() {
-  return JSON.parse(localStorage.getItem('meals')) || [];
+
+async function getMeals() {
+  try {
+    const response = await fetch('http://localhost:3000/meals');
+    if (!response.ok) {
+      throw new Error('Erreur lors de la récupération des repas');
+    }
+    const meals = await response.json();
+    return meals;
+  } catch (error) {
+    console.error('Erreur:', error);
+    return [];
+  }
 }
 
-function addMeal(meal) {
-  const meals = getMeals();
-  meals.push(meal);
-  localStorage.setItem('meals', JSON.stringify(meals));
+async function addMeal(meal) {
+  try {
+    const response = await fetch('http://localhost:3000/meals', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(meal)
+    });
+    if (!response.ok) {
+      throw new Error('Erreur lors de l\'ajout du repas');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Erreur:', error);
+    return null;
+  }
 }
 
-// -----------------------------------------------------
+
 // CALCUL DES TOTAUX
-// -----------------------------------------------------
+
 function calculateTotals(meals) {
   return meals.reduce((acc, meal) => ({
     calories: acc.calories + meal.calories,
@@ -61,12 +81,11 @@ function calculateTotals(meals) {
   }), { calories: 0, proteins: 0, carbs: 0, fats: 0 });
 }
 
-// -----------------------------------------------------
-// DASHBOARD : MISE À JOUR DES BARRES DE PROGRESSION ET DE LA LISTE DES REPAS
-// -----------------------------------------------------
-function updateDashboard() {
+
+// DASHBOARD 
+async function updateDashboard() {
   const objectives = getObjectives();
-  const meals = getMeals();
+  const meals = await getMeals();
   const totals = calculateTotals(meals);
 
   // Mise à jour des objectifs affichés
@@ -95,11 +114,11 @@ function updateDashboard() {
   document.getElementById('fats-progress').style.width = fatsPercent + '%';
 }
 
-// Génère le tableau HTML listant les repas
-function renderMealList() {
-  const meals = getMeals();
+
+async function renderMealList() {
+  const meals = await getMeals();
   const tbody = document.querySelector('#meal-list tbody');
-  tbody.innerHTML = ''; // Nettoyage avant reconstruction
+  tbody.innerHTML = ''; 
 
   meals.forEach(meal => {
     const row = document.createElement('tr');
@@ -114,9 +133,7 @@ function renderMealList() {
   });
 }
 
-// -----------------------------------------------------
-// STATISTIQUES ET RECOMMANDATIONS
-// -----------------------------------------------------
+
 function getRecommendation(totals, objectives) {
   let recommendation = "";
   if (totals.calories < objectives.dailyCalories) {
@@ -124,7 +141,7 @@ function getRecommendation(totals, objectives) {
   } else {
     recommendation += "Vous avez atteint (ou dépassé) votre objectif calorique ! ";
   }
-  // D'autres logiques peuvent être ajoutées ici
+ 
   return recommendation;
 }
 
@@ -134,7 +151,7 @@ function getTopMeal(meals) {
 }
 
 function getBalancedMeals(meals) {
-  // Exemple de critère "équilibré"
+
   return meals.filter(m => m.proteins >= 10 && m.carbs >= 20 && m.fats >= 5);
 }
 
@@ -159,10 +176,8 @@ function updateStatistics() {
   document.getElementById('balanced-meals').textContent = `Repas équilibrés : ${balancedMeals.length}`;
 }
 
-// -----------------------------------------------------
-// FORMULAIRE D'AJOUT DE REPAS
-// -----------------------------------------------------
-document.getElementById('meal-form').addEventListener('submit', function(e) {
+
+document.getElementById('meal-form').addEventListener('submit', async function(e) {
   e.preventDefault();
   const newMeal = {
     name: document.getElementById('meal-name').value,
@@ -171,20 +186,15 @@ document.getElementById('meal-form').addEventListener('submit', function(e) {
     carbs: Number(document.getElementById('carbs').value),
     fats: Number(document.getElementById('fats').value)
   };
-  // Ajoute le repas dans localStorage
-  addMeal(newMeal);
-  // Réinitialise le formulaire
+
+  await addMeal(newMeal);
   e.target.reset();
-  // Met à jour Dashboard et Statistiques
-  updateDashboard();
-  renderMealList();
-  // Redirige vers le Dashboard
+  await updateDashboard();
+  await renderMealList();
   showSection('dashboard');
 });
 
-// -----------------------------------------------------
-// FORMULAIRE D'OBJECTIFS
-// -----------------------------------------------------
+
 document.getElementById('objectives-form').addEventListener('submit', function(e) {
   e.preventDefault();
   const newObjectives = {
@@ -200,10 +210,8 @@ document.getElementById('objectives-form').addEventListener('submit', function(e
   showSection('dashboard');
 });
 
-// -----------------------------------------------------
-// INITIALISATION
-// -----------------------------------------------------
-window.addEventListener('DOMContentLoaded', () => {
+
+window.addEventListener('DOMContentLoaded', async () => {
   // Pré-remplissage du formulaire d'objectifs avec les valeurs stockées
   const objectives = getObjectives();
   document.getElementById('daily-calories').value = objectives.dailyCalories;
@@ -211,6 +219,6 @@ window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('daily-carbs').value = objectives.dailyCarbs;
   document.getElementById('daily-fats').value = objectives.dailyFats;
 
-  updateDashboard();
-  renderMealList();
+  await updateDashboard();
+  await renderMealList();
 });
