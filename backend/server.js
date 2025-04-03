@@ -3,54 +3,57 @@ const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 const app = express();
 
-
+// Connexion à MongoDB
 mongoose.connect('mongodb://localhost:27017/nutritrack')
   .then(() => console.log('MongoDB connecté !'))
   .catch(err => console.error('Erreur de connexion MongoDB :', err));
 
-
-// Importation des routeurs pour les repas et les objectifs
-const mealsRouter = require('./routes/meals');
-const goalsRouter = require('./routes/goals');
-
-
 // Middleware pour parser le JSON dans le corps des requêtes
 app.use(bodyParser.json());
 
-// Définition des routes de l'API
-app.use('/meals', mealsRouter);
-app.use('/goals', goalsRouter);
+// ----- Routes pour les repas -----
 
-// Middleware de gestion des erreurs (optionnel)
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ error: 'Une erreur est survenue !' });
+// Route GET pour récupérer la liste des repas
+app.get('/meals', (req, res) => {
+  res.json({ message: 'Liste des repas' });
 });
 
+// Route POST pour créer un nouveau repas
 app.post('/meals', async (req, res, next) => {
-    res.send('Hello World!')
-    try {
-    // Validation avec Joi
-    //const { error } = mealSchema.validate(req.body);
-    if (error) {
-      return res.status(400).json({ error: error.details[0].message });
-    }
-    
-    // Crée une nouvelle instance de Meal avec les données validées
-    const newMeal = new Meal(req.body);
-    const savedMeal = await newMeal.save();
-    res.status(201).json(savedMeal);
+  try {
+
+    // Ici, on simule la création d'un repas en renvoyant simplement les données reçues
+    res.status(201).json(req.body);
   } catch (err) {
     next(err);
   }
 });
 
+// ----- Routes pour les objectifs -----
+
+// Route GET pour récupérer la liste des objectifs
+app.get('/goals', (req, res) => {
+  res.json({ message: 'Liste des objectifs' });
+});
+
+// ----- exemple -----
+
 app.get('/', (req, res) => {
-    res.send('Hello World!')
-  })
-  
-  app.listen(3000, () => {
-    console.log(`Example app listening on port 3000`)
-  })
+  res.send('Hello World!');
+});
+
+// ----- Middleware de gestion des erreurs -----
+
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ error: 'Une erreur est survenue !' });
+});
+
+// ----- Démarrage du serveur -----
+
+app.listen(3000, () => {
+  console.log('Server listening on port 3000');
+});
 
   // mettre à jour les routes 
+  // avoir un formulaire avec mes menues des que j'en envoie
