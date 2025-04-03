@@ -1,4 +1,3 @@
-// backend/utils/calculations.js
 
 /**
  * Calcule les totaux nutritionnels à partir d'un tableau de repas.

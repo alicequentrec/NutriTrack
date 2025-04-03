@@ -1,59 +1,72 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
+const cors = require('cors');
+const Meal = require('./Models/Meal');
+const Goal = require('./Models/Goal');
+
 const app = express();
 
-// Connexion à MongoDB
-mongoose.connect('mongodb://localhost:27017/nutritrack')
-  .then(() => console.log('MongoDB connecté !'))
-  .catch(err => console.error('Erreur de connexion MongoDB :', err));
-
-// Middleware pour parser le JSON dans le corps des requêtes
+// Middleware
+app.use(cors());
 app.use(bodyParser.json());
 
-// ----- Routes pour les repas -----
 
-// Route GET pour récupérer la liste des repas
-app.get('/meals', (req, res) => {
-  res.json({ message: 'Liste des repas' });
-});
+mongoose.connect('mongodb://127.0.0.1:27017/nutritrack', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+})
+.then(() => console.log(' Connexion MongoDB réussie !'))
+.catch(err => console.error(' Erreur de connexion MongoDB:', err));
 
-// Route POST pour créer un nouveau repas
-app.post('/meals', async (req, res, next) => {
+// Route GET 
+app.get('/meals', async (req, res) => {
   try {
-
-    // Ici, on simule la création d'un repas en renvoyant simplement les données reçues
-    res.status(201).json(req.body);
+    const meals = await Meal.find();
+    res.json(meals);
   } catch (err) {
-    next(err);
+    console.error('Erreur lors de la récupération des repas:', err);
+    res.status(500).json({ error: err.message });
   }
 });
 
-// ----- Routes pour les objectifs -----
-
-// Route GET pour récupérer la liste des objectifs
-app.get('/goals', (req, res) => {
-  res.json({ message: 'Liste des objectifs' });
+// Route POST 
+app.post('/meals', async (req, res) => {
+  try {
+    const newMeal = new Meal(req.body);
+    const savedMeal = await newMeal.save();
+    res.status(201).json(savedMeal);
+  } catch (err) {
+    console.error('Erreur lors de la création du repas:', err);
+    res.status(400).json({ error: err.message });
+  }
 });
 
-// ----- exemple -----
-
-app.get('/', (req, res) => {
-  res.send('Hello World!');
+// Route GET 
+app.get('/goals', async (req, res) => {
+  try {
+    const goals = await Goal.find();
+    res.json(goals);
+  } catch (err) {
+    console.error('Erreur lors de la récupération des objectifs:', err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
-// ----- Middleware de gestion des erreurs -----
 
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ error: 'Une erreur est survenue !' });
+app.post('/goals', async (req, res) => {
+  try {
+    const newGoal = new Goal(req.body);
+    const savedGoal = await newGoal.save();
+    res.status(201).json(savedGoal);
+  } catch (err) {
+    console.error('Erreur lors de la création des objectifs:', err);
+    res.status(400).json({ error: err.message });
+  }
 });
 
-// ----- Démarrage du serveur -----
-
-app.listen(3000, () => {
-  console.log('Server listening on port 3000');
+// Démarrage du serveur
+const PORT = 3000;
+app.listen(PORT, () => {
+  console.log(`🚀 Serveur démarré sur http://localhost:${PORT}`);
 });
-
-  // mettre à jour les routes 
-  // avoir un formulaire avec mes menues des que j'en envoie
