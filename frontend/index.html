@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>NutriTrack - Suivi nutritionnel</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- Inclusion de Ramda (pour la programmation fonctionnelle) depuis un CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ramda/0.27.1/ramda.min.js"></script>
+</head>
+<body>
+  <!-- En-tête avec le titre et la navigation -->
+  <header>
+    <h1>NutriTrack</h1>
+    <nav>
+      <!-- Ces boutons permettent de naviguer entre les sections de la page -->
+      <button onclick="showSection('dashboard')">Dashboard</button>
+      <button onclick="showSection('ajout')">Ajouter un repas</button>
+      <button onclick="showSection('stats')">Recommandations & Statistiques</button>
+    </nav>
+  </header>
+
+  <!-- Section Dashboard : affiche les totaux des apports journaliers et des barres de progression -->
+  <section id="dashboard" class="active">
+    <h2>Dashboard</h2>
+    <div id="daily-summary">
+      <p>Calories : <span id="calories-count">0</span> / 2000</p>
+      <div class="progress-bar">
+        <div class="progress" id="calories-progress"></div>
+      </div>
+      <p>Protéines : <span id="proteins-count">0</span></p>
+      <div class="progress-bar">
+        <div class="progress" id="proteins-progress"></div>
+      </div>
+      <p>Glucides : <span id="carbs-count">0</span></p>
+      <div class="progress-bar">
+        <div class="progress" id="carbs-progress"></div>
+      </div>
+      <p>Lipides : <span id="fats-count">0</span></p>
+      <div class="progress-bar">
+        <div class="progress" id="fats-progress"></div>
+      </div>
+    </div>
+    <!-- Canvas pour afficher des graphiques (par exemple, via Chart.js) -->
+    <canvas id="progressChart" width="400" height="200"></canvas>
+  </section>
+
+  <!-- Section Ajout de repas : formulaire pour saisir les informations d'un repas -->
+  <section id="ajout">
+    <h2>Ajouter un repas</h2>
+    <form id="meal-form">
+      <label for="meal-name">Nom du repas :</label>
+      <input type="text" id="meal-name" name="name" placeholder="Nom du repas" required><br>
+      
+      <label for="calories">Calories :</label>
+      <input type="number" id="calories" name="calories" placeholder="Calories" required><br>
+      
+      <label for="proteins">Protéines :</label>
+      <input type="number" id="proteins" name="proteins" placeholder="Protéines" required><br>
+      
+      <label for="carbs">Glucides :</label>
+      <input type="number" id="carbs" name="carbs" placeholder="Glucides" required><br>
+      
+      <label for="fats">Lipides :</label>
+      <input type="number" id="fats" name="fats" placeholder="Lipides" required><br>
+      
+      <button type="submit">Ajouter repas</button>
+    </form>
+  </section>
+
+  <!-- Section Recommandations & Statistiques -->
+  <section id="stats">
+    <h2>Recommandations & Statistiques</h2>
+    <div id="recommendations">
+      <h3>Recommandations :</h3>
+      <p id="recommendation-text">Aucune recommandation pour le moment.</p>
+    </div>
+    <div id="statistics">
+      <h3>Statistiques :</h3>
+      <p id="top-meal">Top repas le plus riche : N/A</p>
+      <p id="balanced-meals">Repas équilibrés : N/A</p>
+    </div>
+  </section>
+
+  <!-- Script principal avec la logique fonctionnelle et la gestion des effets de bord -->
+  <script>
+    // ----------------------------------
+    // Navigation entre les sections
+    // ----------------------------------
+    function showSection(sectionId) {
+      // Cache toutes les sections en supprimant la classe "active"
+      document.querySelectorAll('section').forEach(section => section.classList.remove('active'));
+      // Affiche la section sélectionnée en ajoutant la classe "active"
+      document.getElementById(sectionId).classList.add('active');
+      // Met à jour le contenu en fonction de la section affichée
+      if (sectionId === 'dashboard') updateDashboard();
+      if (sectionId === 'stats') updateStatistics();
+    }
+
+    // ----------------------------------
+    // Définition des constantes d'objectifs nutritionnels
+    // ----------------------------------
+    const maxCalories = 2000;
+    const maxProteins = 150;
+    const maxCarbs = 300;
+    const maxFats = 70;
+
+    // ----------------------------------
+    // Fonctions pures et utilitaires
+    // ----------------------------------
+
+    // Fonction pour récupérer et parser les repas stockés dans localStorage
+    const getMeals = () => {
+      const meals = JSON.parse(localStorage.getItem('meals')) || [];
+      return Object.freeze(meals);  // Rendre le tableau immuable
+    };
+
+    // Fonction pour ajouter un repas à la liste et retourner un nouveau tableau immuable
+    const addMeal = (meals, meal) => Object.freeze([...meals, meal]);
+
+    // Fonction pour calculer les totaux nutritionnels à partir d'une liste de repas
+    const calculateTotals = meals =>
+      meals.reduce((acc, meal) => ({
+        calories: acc.calories + meal.calories,
+        proteins: acc.proteins + meal.proteins,
+        carbs: acc.carbs + meal.carbs,
+        fats: acc.fats + meal.fats
+      }), { calories: 0, proteins: 0, carbs: 0, fats: 0 });
+
+    // Fonction pour générer une recommandation en fonction des totaux calculés
+    const getRecommendation = totals => {
+      let recommendation = "";
+      if (totals.calories < maxCalories) {
+        recommendation += `Il manque ${maxCalories - totals.calories} calories. `;
+      } else {
+        recommendation += "Objectif calorique atteint. ";
+      }
+      // D'autres recommandations peuvent être ajoutées ici
+      return recommendation;
+    };
+
+    // Fonction pour obtenir le repas le plus riche en calories
+    const getTopMeal = meals =>
+      meals.reduce((prev, current) => (prev.calories > current.calories ? prev : current), { calories: 0, name: "N/A" });
+
+    // Fonction pour filtrer les repas équilibrés (exemple simple)
+    const getBalancedMeals = meals =>
+      meals.filter(meal => meal.proteins >= 10 && meal.carbs >= 20 && meal.fats >= 5);
+
+    // Exemple de composition avec Ramda : récupère les repas et calcule les totaux
+    const processMeals = R.pipe(getMeals, calculateTotals);
+
+    // ----------------------------------
+    // Fonctions avec effets de bord (mise à jour du DOM et accès à localStorage)
+    // ----------------------------------
+
+    // Met à jour le Dashboard en affichant les totaux et les barres de progression
+    function updateDashboard() {
+      const meals = getMeals();
+      const totals = calculateTotals(meals);
+      
+      // Mise à jour des compteurs textuels
+      document.getElementById('calories-count').textContent = totals.calories;
+      document.getElementById('proteins-count').textContent = totals.proteins;
+      document.getElementById('carbs-count').textContent = totals.carbs;
+      document.getElementById('fats-count').textContent = totals.fats;
+
+      // Mise à jour des barres de progression en fonction des objectifs
+      document.getElementById('calories-progress').style.width = Math.min((totals.calories / maxCalories * 100), 100) + '%';
+      document.getElementById('proteins-progress').style.width = Math.min((totals.proteins / maxProteins * 100), 100) + '%';
+      document.getElementById('carbs-progress').style.width = Math.min((totals.carbs / maxCarbs * 100), 100) + '%';
+      document.getElementById('fats-progress').style.width = Math.min((totals.fats / maxFats * 100), 100) + '%';
+    }
+
+    // Met à jour la section Statistiques et Recommandations
+    function updateStatistics() {
+      const meals = getMeals();
+      if (meals.length === 0) {
+        document.getElementById('recommendation-text').textContent = "Aucun repas ajouté.";
+        document.getElementById('top-meal').textContent = "Top repas le plus riche : N/A";
+        document.getElementById('balanced-meals').textContent = "Repas équilibrés : N/A";
+        return;
+      }
+      const totals = calculateTotals(meals);
+      const recommendation = getRecommendation(totals);
+      document.getElementById('recommendation-text').textContent = recommendation;
+      const topMeal = getTopMeal(meals);
+      document.getElementById('top-meal').textContent = `Top repas le plus riche : ${topMeal.name} (${topMeal.calories} calories)`;
+      const balancedMeals = getBalancedMeals(meals);
+      document.getElementById('balanced-meals').textContent = `Repas équilibrés : ${balancedMeals.length}`;
+    }
+
+    // ----------------------------------
+    // Gestion du formulaire d'ajout de repas
+    // ----------------------------------
+    document.getElementById('meal-form').addEventListener('submit', function(e) {
+      e.preventDefault(); // Empêche le rechargement automatique du formulaire
+      // Création d'un objet repas avec les valeurs saisies dans le formulaire
+      const newMeal = {
+        name: document.getElementById('meal-name').value,
+        calories: Number(document.getElementById('calories').value),
+        proteins: Number(document.getElementById('proteins').value),
+        carbs: Number(document.getElementById('carbs').value),
+        fats: Number(document.getElementById('fats').value)
+      };
+      // Récupère la liste actuelle des repas, ajoute le nouveau repas, puis sauvegarde dans localStorage
+      const currentMeals = getMeals();
+      const updatedMeals = addMeal(currentMeals, newMeal);
+      localStorage.setItem('meals', JSON.stringify(updatedMeals));
+      // Réinitialise le formulaire pour permettre une nouvelle saisie
+      e.target.reset();
+      // Met à jour l'affichage du Dashboard et des Statistiques
+      updateDashboard();
+      updateStatistics();
+      // Redirige vers le Dashboard après l'ajout
+      showSection('dashboard');
+    });
+
+    // Mise à jour initiale de l'affichage dès le chargement de la page
+    updateDashboard();
+    updateStatistics();
+  </script>
+</body>
+</html>
